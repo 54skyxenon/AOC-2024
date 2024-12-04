@@ -52,4 +52,3 @@ echo $numSafe . "\n";
 
 $numSafeWithRemoval = array_sum(array_map('isSafeWithRemoval', $lines));
 echo $numSafeWithRemoval . "\n";
-?>

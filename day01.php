@@ -41,4 +41,3 @@ function solvePart2(): int
 
 echo solvePart1() . "\n";
 echo solvePart2() . "\n";
-?>
