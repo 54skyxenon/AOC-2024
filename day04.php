@@ -30,14 +30,10 @@ function solvePart1(array $lines)
                 $ans += works([$lines[$row][$col], $lines[$row + 1][$col], $lines[$row + 2][$col], $lines[$row + 3][$col]]);
             }
 
-            # Diagonal \
-            if ($row >= 3 and $col >= 3) {
-                $ans += works([$lines[$row][$col], $lines[$row - 1][$col - 1], $lines[$row - 2][$col - 2], $lines[$row - 3][$col - 3]]);
-            }
-
-            # Diagonal /
-            if ($row >= 3 and $col + 3 < $m) {
-                $ans += works([$lines[$row][$col], $lines[$row - 1][$col + 1], $lines[$row - 2][$col + 2], $lines[$row - 3][$col + 3]]);
+            # Diagonal \ and /
+            if ($row + 3 < $n and $col + 3 < $m) {
+                $ans += works([$lines[$row][$col], $lines[$row + 1][$col + 1], $lines[$row + 2][$col + 2], $lines[$row + 3][$col + 3]]);
+                $ans += works([$lines[$row + 3][$col], $lines[$row + 2][$col + 1], $lines[$row + 1][$col + 2], $lines[$row][$col + 3]]);
             }
         }
     }
