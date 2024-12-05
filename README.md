@@ -16,6 +16,11 @@ Zend Engine v4.4.1, Copyright (c) Zend Technologies
     with Zend OPcache v8.4.1, Copyright (c), by Zend Technologies
 ```
 
+You'll also need to install the data structures extension:
+```bash
+$ pecl install ds
+```
+
 To execute a specific PHP file I do:
 ```bash
 $ php hello.php
