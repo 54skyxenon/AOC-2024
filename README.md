@@ -16,9 +16,14 @@ Zend Engine v4.4.1, Copyright (c) Zend Technologies
     with Zend OPcache v8.4.1, Copyright (c), by Zend Technologies
 ```
 
-You'll also need to install the data structures extension:
+To install the data structures extension:
 ```bash
 $ pecl install ds
+```
+
+I use Composer to install 3rd-party libraries. Follow [these steps](https://getcomposer.org/download/) to install Composer if you haven't already. Assuming a local installation, run:
+```
+$ php composer.phar install
 ```
 
 To execute a specific PHP file I do:
