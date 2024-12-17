@@ -102,6 +102,7 @@ function calculate(int $a): int
     return $b % 8;
 }
 
+// Genius solution: https://www.reddit.com/r/adventofcode/comments/1hg38ah/comment/m2gq8px/
 function dfs(int $a, int $depth, array &$program): int|null
 {
     if ($depth === count($program)) {
