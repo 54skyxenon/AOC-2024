@@ -2,17 +2,17 @@
 $filename = 'inputs/day4.txt';
 $lines = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-function works(array $letters)
+function works(array $letters): bool
 {
     return in_array(implode('', $letters), ['XMAS', 'SAMX']);
 }
 
-function worksMAS(array $letters)
+function worksMAS(array $letters): bool
 {
     return in_array(implode('', $letters), ['MAS', 'SAM']);
 }
 
-function solvePart1(array $lines)
+function solvePart1(array $lines): int
 {
     $ans = 0;
     $n = count($lines);
@@ -41,7 +41,7 @@ function solvePart1(array $lines)
     return $ans;
 }
 
-function solvePart2(array $lines)
+function solvePart2(array $lines): int
 {
     $ans = 0;
     $n = count($lines);

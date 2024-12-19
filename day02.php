@@ -2,7 +2,7 @@
 $filename = "inputs/day2.txt";
 $lines = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-function isSafeHelper(array $tokens)
+function isSafeHelper(array $tokens): bool
 {
     $differences = [];
     for ($i = 0; $i < count($tokens) - 1; $i++) {

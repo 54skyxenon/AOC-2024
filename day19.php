@@ -27,7 +27,7 @@ function dpPart1(array &$inventory, Map &$cache, string $pattern): bool
     return $cache[$pattern] = false;
 }
 
-function dpPart2(array &$inventory, Map &$cache, string $pattern)
+function dpPart2(array &$inventory, Map &$cache, string $pattern): int
 {
     if ($cache->hasKey($pattern)) {
         return $cache[$pattern];

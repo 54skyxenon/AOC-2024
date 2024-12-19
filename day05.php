@@ -6,7 +6,7 @@ $graph = [];
 $ans = 0;
 $ansPart2 = 0;
 
-function isCorrectlyOrdered(array &$sequence)
+function isCorrectlyOrdered(array &$sequence): bool
 {
     global $graph;
 
