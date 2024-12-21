@@ -60,7 +60,7 @@ function combinations(int $rangeEndExclusive, int $choose): array
     return $indices;
 }
 
-// ! This DP works because the rest of the layers are all lined up to be AAAAAA.....
+// ! This DP works because the closer robot layers to you are guaranteed to be AAAAAA.....
 function transform(Map &$cache, string $current, string $target, int $depth, bool $onNumericKeypad): int
 {
     global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS, $MOVEMENTS;
@@ -109,6 +109,7 @@ function transform(Map &$cache, string $current, string $target, int $depth, boo
 
     // Check each one with the next depth
     foreach ($validSequences as $sequence) {
+        // We know we start by moving the robot from A, BUT ALSO it needs to land back to A before the next one
         $sequence = ['A', ...$sequence, 'A'];
 
         // We're on the last arrow keypad whose robot we can directly control
