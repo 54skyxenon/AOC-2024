@@ -6,7 +6,10 @@ I'm back for AoC 2024, this time in PHP!
 
 Went well generally speaking! I can see why people think PHP is a meme language, though there were some very useful functions I liked such as `var_dump` and `str_replace`.
 
-Days I personally struggled with: 14 (Part 2), 17 (Part 2)
+I personally struggled with and needed hints for:
+- Day 14 (Part 2)
+- Day 17 (Part 2)
+- Day 21 (Part 2)
 
 ## Input
 All input is read from TXT files under the `inputs/` folder that you need to make prior to executing any code.
