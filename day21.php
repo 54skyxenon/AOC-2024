@@ -1,7 +1,5 @@
 <?php
 
-use \Ds\Map;
-
 $filename = 'inputs/day21.txt';
 $lines = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
@@ -27,8 +25,6 @@ $ARROW_PAD_LOCATIONS = [
     '>' => [1, 2],
 ];
 
-$transformCache = new Map();
-
 function manhattanDistanceArrows(string $arrow1, string $arrow2): int
 {
     global $ARROW_PAD_LOCATIONS;
@@ -41,88 +37,113 @@ function manhattanDistanceNums(string $num1, string $num2): int
     return abs($NUMERIC_PAD_LOCATIONS[$num1][0] - $NUMERIC_PAD_LOCATIONS[$num2][0]) + abs($NUMERIC_PAD_LOCATIONS[$num1][1] - $NUMERIC_PAD_LOCATIONS[$num2][1]);
 }
 
-function transform(string $currentNum, string $currentArrow1, string $currentArrow2, string $targetNum, string $targetArrow1, string $targetArrow2): int
+function transform(array $currentParameters, array $targetParameters): int
 {
-    global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS, $transformCache;
+    global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS;
+    assert(count($currentParameters) === count($targetParameters), "Lengths of current and desired parameters don't match!\n");
 
-    $state = "$currentNum,$currentArrow1,$currentArrow2 => $targetNum,$targetArrow1,$targetArrow2";
+    for ($i = 0; $i < count($currentParameters); $i++) {
+        if ($currentParameters[$i] != $targetParameters[$i]) {
+            // We are on the number keypad
+            if ($i === 0) {
+                $best = INF;
+                $currentDistance = manhattanDistanceNums($currentParameters[$i], $targetParameters[$i]);
+                list($r, $c) = $NUMERIC_PAD_LOCATIONS[$currentParameters[$i]];
 
-    if ($transformCache->hasKey($state)) {
-        return $transformCache[$state];
-    }
+                foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newNextParameter)) {
+                    $adjacentNum = array_search([$nr, $nc], $NUMERIC_PAD_LOCATIONS);
 
-    // Do what it takes to make the number match
-    if ($currentNum !== $targetNum) {
-        $best = INF;
+                    // The adjacent numeric key needs to exist and get us closer
+                    if ($adjacentNum !== false) {
+                        $newDistance = manhattanDistanceNums($adjacentNum, $targetParameters[$i]);
 
-        $currentDistance = manhattanDistanceNums($currentNum, $targetNum);
-        list($r, $c) = $NUMERIC_PAD_LOCATIONS[$currentNum];
-
-        foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newTargetArrow1)) {
-            $adjacentNum = array_search([$nr, $nc], $NUMERIC_PAD_LOCATIONS);
-
-            // The adjacent numeric key needs to exist and get us closer
-            if ($adjacentNum !== false) {
-                $newDistance = manhattanDistanceNums($adjacentNum, $targetNum);
-
-                if ($newDistance < $currentDistance) {
-                    $strokesToMoveArrow1 = transform($currentNum, $currentArrow1, $currentArrow2, $currentNum, $newTargetArrow1, 'A');
-                    $best = min($best, $strokesToMoveArrow1 + 1 + transform($adjacentNum, $newTargetArrow1, 'A', $targetNum, $targetArrow1, $targetArrow2));
+                        if ($newDistance < $currentDistance) {
+                            $intermediaryTargetParameters = $currentParameters;
+                            $intermediaryTargetParameters[$i + 1] = $newNextParameter;
+                            for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
+                                $intermediaryTargetParameters[$j] = 'A';
+                            }
+                            $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
+                            $newCurrentParameters = $intermediaryTargetParameters;
+                            $newCurrentParameters[$i] = $adjacentNum;
+                            $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
+                        }
+                    }
                 }
+
+                return $best;
+            }
+            // Robot on directional keypad
+            elseif ($i < count($currentParameters) - 1) {
+                $best = INF;
+                $currentDistance = manhattanDistanceArrows($currentParameters[$i], $targetParameters[$i]);
+                list($r, $c) = $ARROW_PAD_LOCATIONS[$currentParameters[$i]];
+
+                foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newNextParameter)) {
+                    $adjacentArrow = array_search([$nr, $nc], $ARROW_PAD_LOCATIONS);
+
+                    // The adjacent numeric key needs to exist and get us closer
+                    if ($adjacentArrow !== false) {
+                        $newDistance = manhattanDistanceArrows($adjacentArrow, $targetParameters[$i]);
+
+                        if ($newDistance < $currentDistance) {
+                            $intermediaryTargetParameters = $currentParameters;
+                            $intermediaryTargetParameters[$i + 1] = $newNextParameter;
+                            for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
+                                $intermediaryTargetParameters[$j] = 'A';
+                            }
+                            $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
+                            $newCurrentParameters = $intermediaryTargetParameters;
+                            $newCurrentParameters[$i] = $adjacentArrow;
+                            $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
+                        }
+                    }
+                }
+
+                return $best;
+            }
+            // We can directly control the last robot 
+            else {
+                $myStrokes = manhattanDistanceArrows($currentParameters[$i], $targetParameters[$i]);
+                $newParameters = $currentParameters;
+                $newParameters[count($newParameters) - 1] = end($targetParameters);
+                $restOfJourney = transform($newParameters, $targetParameters);
+                return $myStrokes + $restOfJourney;
             }
         }
-
-        return $transformCache[$state] = $best;
     }
-    // One layer of indirection
-    elseif ($currentArrow1 !== $targetArrow1) {
-        $best = INF;
 
-        $currentDistance = manhattanDistanceArrows($currentArrow1, $targetArrow1);
-        list($r, $c) = $ARROW_PAD_LOCATIONS[$currentArrow1];
-
-        foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newTargetArrow2)) {
-            $adjacentArrow = array_search([$nr, $nc], $ARROW_PAD_LOCATIONS);
-
-            // The adjacent arrow key needs to exist and get us closer
-            if ($adjacentArrow) {
-                $newDistance = manhattanDistanceArrows($adjacentArrow, $targetArrow1);
-
-                if ($newDistance < $currentDistance) {
-                    $strokesToMoveArrow2 = transform($currentNum, $currentArrow1, $currentArrow2, $currentNum, $currentArrow1, $newTargetArrow2);
-                    // ? Is +1 needed for the pressing
-                    $best = min($best, $strokesToMoveArrow2 + 1 + transform($currentNum, $adjacentArrow, $newTargetArrow2, $targetNum, $targetArrow1, $targetArrow2));
-                }
-            }
-        }
-
-        return $transformCache[$state] = $best;
-    }
-    // The layer we can directly control
-    elseif ($currentArrow2 !== $targetArrow2) {
-        $myStrokes = manhattanDistanceArrows($currentArrow2, $targetArrow2);
-        $restOfJourney = transform($currentNum, $currentArrow1, $targetArrow2, $targetNum, $targetArrow1, $targetArrow2);
-        return $transformCache[$state] = ($myStrokes + $restOfJourney);
-    } else {
-        return $transformCache[$state] = 0;
-    }
+    // All parameters match
+    return 0;
 }
 
-function dfs(string $code, string $currentNum, string $currentArrow1, string $currentArrow2, int $typed, int $strokes): int
+function dfs(string $code, array $parameters, int $typed, int $strokes): int
 {
     if ($typed === strlen($code)) {
         return $strokes;
     }
 
     // Line up all the robot arms for the press
-    $cost = transform($currentNum, $currentArrow1, $currentArrow2, $code[$typed], 'A', 'A');
-    return dfs($code, $code[$typed], 'A', 'A', $typed + 1, $strokes + $cost + 1);
+    $targetParameters = [$code[$typed], ...array_fill(0, count($parameters) - 1, 'A')];
+    $cost = transform($parameters, $targetParameters);
+    return dfs($code, $targetParameters, $typed + 1, $strokes + $cost + 1);
 }
 
-function codeNumber(string $code): int
+function solve(array &$lines, int $robotDirectionalKeypads)
 {
-    return intval(substr($code, 0, -1));
+    $ans = 0;
+
+    foreach ($lines as $code) {
+        $initialParameters = array_fill(0, $robotDirectionalKeypads + 1, 'A');
+        $codeNumber = intval(substr($code, 0, -1));
+        $ans += dfs($code, $initialParameters, 0, 0) * $codeNumber;
+    }
+
+    return $ans;
 }
 
-$part1 = array_sum(array_map(fn($code) => dfs($code, 'A', 'A', 'A', 0, 0) * codeNumber($code), $lines));
-echo "$part1\n";
+// Works
+echo solve($lines, 2) . "\n";
+
+// ! Takes forever to do, THINK OF SOMETHING BETTER
+echo solve($lines, 25) . "\n";
