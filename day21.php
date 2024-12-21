@@ -1,5 +1,9 @@
 <?php
 
+/** Day 21 Part 2 solution: https://www.youtube.com/watch?v=q5I6ZvJmHEo&ab_channel=WilliamY.Feng */
+
+use \Ds\Map;
+
 $filename = 'inputs/day21.txt';
 $lines = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
@@ -25,98 +29,121 @@ $ARROW_PAD_LOCATIONS = [
     '>' => [1, 2],
 ];
 
-function manhattanDistanceArrows(string $arrow1, string $arrow2): int
+$MOVEMENTS = [
+    '<' => [0, -1],
+    '>' => [0, 1],
+    '^' => [-1, 0],
+    'v' => [1, 0],
+];
+
+// Mimics itertools.combinations(range(rangeEndExclusive), r=choose)
+function combinations(int $rangeEndExclusive, int $choose): array
 {
-    global $ARROW_PAD_LOCATIONS;
-    return abs($ARROW_PAD_LOCATIONS[$arrow1][0] - $ARROW_PAD_LOCATIONS[$arrow2][0]) + abs($ARROW_PAD_LOCATIONS[$arrow1][1] - $ARROW_PAD_LOCATIONS[$arrow2][1]);
-}
+    $indices = [];
 
-function manhattanDistanceNums(string $num1, string $num2): int
-{
-    global $NUMERIC_PAD_LOCATIONS;
-    return abs($NUMERIC_PAD_LOCATIONS[$num1][0] - $NUMERIC_PAD_LOCATIONS[$num2][0]) + abs($NUMERIC_PAD_LOCATIONS[$num1][1] - $NUMERIC_PAD_LOCATIONS[$num2][1]);
-}
+    for ($mask = 0; $mask < 2 ** $rangeEndExclusive; $mask++) {
+        $maskBinary = strrev(decbin($mask));
 
-function transform(array $currentParameters, array $targetParameters): int
-{
-    global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS;
-    assert(count($currentParameters) === count($targetParameters));
+        if (substr_count($maskBinary, '1') === $choose) {
+            $indicesHere = [];
 
-    for ($i = 0; $i < count($currentParameters); $i++) {
-        if ($currentParameters[$i] != $targetParameters[$i]) {
-            // Robots indirectly controlled by other robots
-            if ($i < count($currentParameters) - 1) {
-                $best = INF;
-                $locations = ($i > 0) ? $ARROW_PAD_LOCATIONS : $NUMERIC_PAD_LOCATIONS;
-                $distance = ($i > 0) ? (fn($x, $y) => manhattanDistanceArrows($x, $y)) : (fn($x, $y) => manhattanDistanceNums($x, $y));
-
-                $currentDistance = $distance($currentParameters[$i], $targetParameters[$i]);
-                list($r, $c) = $locations[$currentParameters[$i]];
-
-                foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newNextParameter)) {
-                    $adjacent = array_search([$nr, $nc], $locations);
-
-                    // The adjacent key needs to exist and get us closer
-                    if ($adjacent !== false and $distance($adjacent, $targetParameters[$i]) < $currentDistance) {
-                        $intermediaryTargetParameters = $currentParameters;
-                        $intermediaryTargetParameters[$i + 1] = $newNextParameter;
-                        for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
-                            $intermediaryTargetParameters[$j] = 'A';
-                        }
-                        $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
-                        $newCurrentParameters = $intermediaryTargetParameters;
-                        $newCurrentParameters[$i] = $adjacent;
-                        $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
-                    }
+            for ($i = 0; $i < strlen($maskBinary); $i++) {
+                if ($maskBinary[$i] === '1') {
+                    $indicesHere[] = $i;
                 }
+            }
 
-                return $best;
-            }
-            // We can directly control the last robot 
-            else {
-                $myStrokes = manhattanDistanceArrows($currentParameters[$i], $targetParameters[$i]);
-                $newParameters = $currentParameters;
-                $newParameters[count($newParameters) - 1] = end($targetParameters);
-                $restOfJourney = transform($newParameters, $targetParameters);
-                return $myStrokes + $restOfJourney;
-            }
+            $indices[] = $indicesHere;
         }
     }
 
-    // All parameters match
-    return 0;
+    return $indices;
 }
 
-function shortestSequence(string $code, array $parameters): int
+// ! This DP works because the rest of the layers are all lined up to be AAAAAA.....
+function transform(Map &$cache, string $current, string $target, int $depth, bool $onNumericKeypad): int
 {
-    $keyPresses = 0;
+    global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS, $MOVEMENTS;
 
-    // Line up all the robot arms for the press, each time
-    for ($typed = 0; $typed < strlen($code); $typed++) {
-        $targetParameters = [$code[$typed], ...array_fill(0, count($parameters) - 1, 'A')];
-        $cost = transform($parameters, $targetParameters);
-        $keyPresses += $cost + 1;
-        $parameters = $targetParameters;
+    $state = "$current-$target-$depth-$onNumericKeypad";
+    if ($cache->hasKey($state)) {
+        return $cache[$state];
     }
 
-    return $keyPresses;
+    $keypad = $onNumericKeypad ? $NUMERIC_PAD_LOCATIONS : $ARROW_PAD_LOCATIONS;
+    $distR = $keypad[$target][0] - $keypad[$current][0];
+    $distC = $keypad[$target][1] - $keypad[$current][1];
+    $distTotal = abs($distR) + abs($distC);
+    $keyR = ($distR >= 0) ? 'v' : '^';
+    $keyC = ($distC >= 0) ? '>' : '<';
+
+    // Build move sequences from current key to target key that don't cause the robot to fall off
+    $validSequences = [];
+    foreach (combinations($distTotal, abs($distR)) as $combination) {
+        // Example: ^>><v
+        $sequence = array_fill(0, $distTotal, $keyC);
+        foreach ($combination as $index) {
+            $sequence[$index] = $keyR;
+        }
+
+        $valid = true;
+        list($currR, $currC) = $keypad[$current];
+
+        foreach ($sequence as $move) {
+            list($dr, $dc) = $MOVEMENTS[$move];
+            $currR += $dr;
+            $currC += $dc;
+
+            if (!in_array([$currR, $currC], $keypad)) {
+                $valid = false;
+                break;
+            }
+        }
+
+        if ($valid) {
+            $validSequences[] = $sequence;
+        }
+    }
+
+    $best = INF;
+
+    // Check each one with the next depth
+    foreach ($validSequences as $sequence) {
+        $sequence = ['A', ...$sequence, 'A'];
+
+        // We're on the last arrow keypad whose robot we can directly control
+        if ($depth === 0) {
+            return $cache[$state] = (count($sequence) - 1);
+        }
+
+        $bestSequence = 0;
+        for ($i = 0; $i < count($sequence) - 1; $i++) {
+            $bestSequence += transform($cache, $sequence[$i], $sequence[$i + 1], $depth - 1, false);
+        }
+
+        $best = min($best, $bestSequence);
+    }
+
+    return $cache[$state] = $best;
 }
 
-function solve(array &$lines, int $robotDirectionalKeypads)
+function solve(array &$lines, int $depthLimit)
 {
     $ans = 0;
+    $cache = new Map();
 
     foreach ($lines as $code) {
-        $initialParameters = array_fill(0, $robotDirectionalKeypads + 1, 'A');
-        $codeNumber = intval(substr($code, 0, -1));
-        $ans += shortestSequence($code, $initialParameters) * $codeNumber;
+        $code = 'A' . $code;
+        $shortest = 0;
+        for ($i = 0; $i < strlen($code) - 1; $i++) {
+            $shortest += transform($cache, $code[$i], $code[$i + 1], $depthLimit, true);
+        }
+        $codeNumber = intval(substr($code, 1, -1));
+        $ans += $shortest * $codeNumber;
     }
 
     return $ans;
 }
 
-// Works
 echo solve($lines, 2) . "\n";
-
-// ! Takes forever to do, THINK OF SOMETHING BETTER
 echo solve($lines, 25) . "\n";
