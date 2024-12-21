@@ -117,16 +117,19 @@ function transform(array $currentParameters, array $targetParameters): int
     return 0;
 }
 
-function dfs(string $code, array $parameters, int $typed, int $strokes): int
+function shortestSequence(string $code, array $parameters): int
 {
-    if ($typed === strlen($code)) {
-        return $strokes;
+    $keyPresses = 0;
+
+    // Line up all the robot arms for the press, each time
+    for ($typed = 0; $typed < strlen($code); $typed++) {
+        $targetParameters = [$code[$typed], ...array_fill(0, count($parameters) - 1, 'A')];
+        $cost = transform($parameters, $targetParameters);
+        $keyPresses += $cost + 1;
+        $parameters = $targetParameters;
     }
 
-    // Line up all the robot arms for the press
-    $targetParameters = [$code[$typed], ...array_fill(0, count($parameters) - 1, 'A')];
-    $cost = transform($parameters, $targetParameters);
-    return dfs($code, $targetParameters, $typed + 1, $strokes + $cost + 1);
+    return $keyPresses;
 }
 
 function solve(array &$lines, int $robotDirectionalKeypads)
@@ -136,7 +139,7 @@ function solve(array &$lines, int $robotDirectionalKeypads)
     foreach ($lines as $code) {
         $initialParameters = array_fill(0, $robotDirectionalKeypads + 1, 'A');
         $codeNumber = intval(substr($code, 0, -1));
-        $ans += dfs($code, $initialParameters, 0, 0) * $codeNumber;
+        $ans += shortestSequence($code, $initialParameters) * $codeNumber;
     }
 
     return $ans;
