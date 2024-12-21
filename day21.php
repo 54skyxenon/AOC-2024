@@ -40,63 +40,33 @@ function manhattanDistanceNums(string $num1, string $num2): int
 function transform(array $currentParameters, array $targetParameters): int
 {
     global $ARROW_PAD_LOCATIONS, $NUMERIC_PAD_LOCATIONS;
-    assert(count($currentParameters) === count($targetParameters), "Lengths of current and desired parameters don't match!\n");
+    assert(count($currentParameters) === count($targetParameters));
 
     for ($i = 0; $i < count($currentParameters); $i++) {
         if ($currentParameters[$i] != $targetParameters[$i]) {
-            // We are on the number keypad
-            if ($i === 0) {
+            // Robots indirectly controlled by other robots
+            if ($i < count($currentParameters) - 1) {
                 $best = INF;
-                $currentDistance = manhattanDistanceNums($currentParameters[$i], $targetParameters[$i]);
-                list($r, $c) = $NUMERIC_PAD_LOCATIONS[$currentParameters[$i]];
+                $locations = ($i > 0) ? $ARROW_PAD_LOCATIONS : $NUMERIC_PAD_LOCATIONS;
+                $distance = ($i > 0) ? (fn($x, $y) => manhattanDistanceArrows($x, $y)) : (fn($x, $y) => manhattanDistanceNums($x, $y));
+
+                $currentDistance = $distance($currentParameters[$i], $targetParameters[$i]);
+                list($r, $c) = $locations[$currentParameters[$i]];
 
                 foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newNextParameter)) {
-                    $adjacentNum = array_search([$nr, $nc], $NUMERIC_PAD_LOCATIONS);
+                    $adjacent = array_search([$nr, $nc], $locations);
 
-                    // The adjacent numeric key needs to exist and get us closer
-                    if ($adjacentNum !== false) {
-                        $newDistance = manhattanDistanceNums($adjacentNum, $targetParameters[$i]);
-
-                        if ($newDistance < $currentDistance) {
-                            $intermediaryTargetParameters = $currentParameters;
-                            $intermediaryTargetParameters[$i + 1] = $newNextParameter;
-                            for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
-                                $intermediaryTargetParameters[$j] = 'A';
-                            }
-                            $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
-                            $newCurrentParameters = $intermediaryTargetParameters;
-                            $newCurrentParameters[$i] = $adjacentNum;
-                            $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
+                    // The adjacent key needs to exist and get us closer
+                    if ($adjacent !== false and $distance($adjacent, $targetParameters[$i]) < $currentDistance) {
+                        $intermediaryTargetParameters = $currentParameters;
+                        $intermediaryTargetParameters[$i + 1] = $newNextParameter;
+                        for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
+                            $intermediaryTargetParameters[$j] = 'A';
                         }
-                    }
-                }
-
-                return $best;
-            }
-            // Robot on directional keypad
-            elseif ($i < count($currentParameters) - 1) {
-                $best = INF;
-                $currentDistance = manhattanDistanceArrows($currentParameters[$i], $targetParameters[$i]);
-                list($r, $c) = $ARROW_PAD_LOCATIONS[$currentParameters[$i]];
-
-                foreach ([[$r + 1, $c, 'v'], [$r - 1, $c, '^'], [$r, $c + 1, '>'], [$r, $c - 1, '<']] as list($nr, $nc, $newNextParameter)) {
-                    $adjacentArrow = array_search([$nr, $nc], $ARROW_PAD_LOCATIONS);
-
-                    // The adjacent numeric key needs to exist and get us closer
-                    if ($adjacentArrow !== false) {
-                        $newDistance = manhattanDistanceArrows($adjacentArrow, $targetParameters[$i]);
-
-                        if ($newDistance < $currentDistance) {
-                            $intermediaryTargetParameters = $currentParameters;
-                            $intermediaryTargetParameters[$i + 1] = $newNextParameter;
-                            for ($j = $i + 2; $j < count($intermediaryTargetParameters); $j++) {
-                                $intermediaryTargetParameters[$j] = 'A';
-                            }
-                            $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
-                            $newCurrentParameters = $intermediaryTargetParameters;
-                            $newCurrentParameters[$i] = $adjacentArrow;
-                            $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
-                        }
+                        $strokesToMoveNextParameter = transform($currentParameters, $intermediaryTargetParameters);
+                        $newCurrentParameters = $intermediaryTargetParameters;
+                        $newCurrentParameters[$i] = $adjacent;
+                        $best = min($best, $strokesToMoveNextParameter + 1 + transform($newCurrentParameters, $targetParameters));
                     }
                 }
 
